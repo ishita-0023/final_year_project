@@ -1,0 +1,61 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Essay Grader</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: auto; }
+        textarea { width: 100%; height: 200px; margin-bottom: 10px; }
+        #result, #error { margin-top: 20px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Essay Grader</h1>
+        <form id="essay-form">
+            <textarea id="essay" name="essay" placeholder="Enter your essay here (minimum 50 words)..."></textarea>
+            <button type="submit">Grade Essay</button>
+        </form>
+        <div id="result" class="hidden">
+            <h2>Predicted Grade: <span id="grade"></span></h2>
+        </div>
+        <div id="error" class="hidden"></div>
+    </div>
+    <script>
+        document.getElementById('essay-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const essay = document.getElementById('essay').value;
+            const result = document.getElementById('result');
+            const error = document.getElementById('error');
+            
+            fetch('/grade', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'essay=' + encodeURIComponent(essay)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    error.textContent = data.error;
+                    error.classList.remove('hidden');
+                    result.classList.add('hidden');
+                } else {
+                    document.getElementById('grade').textContent = data.grade;
+                    result.classList.remove('hidden');
+                    error.classList.add('hidden');
+                }
+            })
+            .catch((error) => {
+                error.textContent = 'An error occurred. Please try again.';
+                error.classList.remove('hidden');
+                result.classList.add('hidden');
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>
