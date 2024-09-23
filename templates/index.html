@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Essay Grader</title>
+    <title>Advanced Essay Analyzer</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/compromise/14.9.0/compromise.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -12,51 +14,108 @@
         .custom-shadow {
             box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
         }
+        .highlight {
+            background-color: #ffd700;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
-        <div class="max-w-2xl mx-auto">
+        <div class="max-w-4xl mx-auto">
             <div class="bg-white rounded-lg shadow-lg overflow-hidden">
                 <div class="gradient-bg p-6 sm:p-10">
-                    <h1 class="text-3xl sm:text-4xl font-bold text-white mb-2">Essay Grader</h1>
-                    <p class="text-gray-200">Get instant feedback on your writing</p>
+                    <h1 class="text-3xl sm:text-4xl font-bold text-white mb-2">Advanced Essay Analyzer</h1>
+                    <p class="text-gray-200">Get comprehensive feedback, grading, and analysis on your writing</p>
                 </div>
                 <div class="p-6 sm:p-10">
                     <form id="essay-form">
                         <div class="mb-6">
                             <label for="essay" class="block text-gray-700 text-sm font-bold mb-2">Your Essay</label>
-                            <textarea id="essay" name="essay" rows="8" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md" placeholder="Enter your essay here (minimum 50 words)..."></textarea>
+                            <textarea id="essay" name="essay" rows="10" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md" placeholder="Enter your essay here (minimum 100 words)..."></textarea>
                         </div>
-                        <div>
-                            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <div class="flex flex-wrap space-x-2 space-y-2 sm:space-y-0">
+                            <button type="submit" class="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                 Grade Essay
+                            </button>
+                            <button type="button" id="analyze-essay" class="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                                Analyze Essay
+                            </button>
+                            <button type="button" id="generate-summary" class="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                Generate Summary
+                            </button>
+                            <button type="button" id="check-grammar" class="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                Check Grammar
                             </button>
                         </div>
                     </form>
-                    <div id="result" class="mt-8 hidden">
+                    <div id="grade-result" class="mt-8 hidden">
                         <h2 class="text-lg font-semibold text-gray-900">Predicted Grade: <span id="grade" class="text-2xl font-bold text-indigo-600"></span></h2>
+                    </div>
+                    <div id="grammar-result" class="mt-8 hidden">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Grammar Suggestions:</h2>
+                        <div id="grammar-suggestions" class="space-y-4"></div>
+                    </div>
+                    <div id="analysis-result" class="mt-8 hidden">
+                        <h2 class="text-lg font-semibold text-gray-900">Essay Analysis:</h2>
+                        <div id="analysis-content" class="mt-4"></div>
+                    </div>
+                    <div id="summary-result" class="mt-8 hidden">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Essay Summary:</h2>
+                        <div id="essay-summary"></div>
                     </div>
                     <div id="error" class="mt-8 hidden">
                         <p class="text-red-600"></p>
                     </div>
                 </div>
             </div>
-            <div class="mt-8 text-center">
-                <svg class="inline-block" width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="60" cy="60" r="58" stroke="#4F46E5" stroke-width="4"/>
-                    <path d="M40 60L55 75L85 45" stroke="#4F46E5" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
         </div>
     </div>
     <script>
-        document.getElementById('essay-form').addEventListener('submit', function(e) {
+        const essayForm = document.getElementById('essay-form');
+        const essayInput = document.getElementById('essay');
+        const gradeResult = document.getElementById('grade-result');
+        const grade = document.getElementById('grade');
+        const grammarResult = document.getElementById('grammar-result');
+        const grammarSuggestions = document.getElementById('grammar-suggestions');
+        const analysisResult = document.getElementById('analysis-result');
+        const analysisContent = document.getElementById('analysis-content');
+        const summaryResult = document.getElementById('summary-result');
+        const essaySummary = document.getElementById('essay-summary');
+        const error = document.getElementById('error');
+
+        function showError(message) {
+            error.querySelector('p').textContent = message;
+            error.classList.remove('hidden');
+        }
+
+        function hideError() {
+            error.classList.add('hidden');
+        }
+
+        function calculateReadabilityScore(text) {
+            const sentences = text.split(/[.!?]+/);
+            const words = text.match(/\b\w+\b/g);
+            const syllables = words.reduce((count, word) => {
+                return count + word.replace(/(?![aeiou])[a-z]/gi, '').length;
+            }, 0);
+
+            const averageWordsPerSentence = words.length / sentences.length;
+            const averageSyllablesPerWord = syllables / words.length;
+
+            return 206.835 - (1.015 * averageWordsPerSentence) - (84.6 * averageSyllablesPerWord);
+        }
+
+        essayForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            const essay = document.getElementById('essay').value;
-            const result = document.getElementById('result');
-            const error = document.getElementById('error');
-            
+            const essay = essayInput.value;
+
+            if (essay.split(/\s+/).length < 100) {
+                showError('Please enter an essay with at least 100 words.');
+                return;
+            }
+
+            // Simulating an API call for grading
             fetch('/grade', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -65,21 +124,116 @@
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    error.querySelector('p').textContent = data.error;
-                    error.classList.remove('hidden');
-                    result.classList.add('hidden');
+                    showError(data.error);
                 } else {
-                    document.getElementById('grade').textContent = data.grade;
-                    result.classList.remove('hidden');
-                    error.classList.add('hidden');
+                    grade.textContent = data.grade;
+                    gradeResult.classList.remove('hidden');
+                    hideError();
                 }
             })
             .catch((error) => {
-                error.querySelector('p').textContent = 'An error occurred. Please try again.';
-                error.classList.remove('hidden');
-                result.classList.add('hidden');
+                showError('An error occurred while grading the essay. Please try again.');
                 console.error('Error:', error);
             });
+        });
+
+        document.getElementById('check-grammar').addEventListener('click', function(e) {
+            e.preventDefault();
+            const essay = essayInput.value;
+
+            // Simulating grammar check with LanguageTool API
+            const apiUrl = 'https://api.languagetool.org/v2/check';
+
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `text=${encodeURIComponent(essay)}&language=en-US`
+            })
+            .then(response => response.json())
+            .then(data => {
+                grammarSuggestions.innerHTML = '';
+                if (data.matches && data.matches.length > 0) {
+                    data.matches.forEach(match => {
+                        const suggestion = document.createElement('div');
+                        suggestion.className = 'p-4 bg-yellow-100 rounded-md';
+                        suggestion.innerHTML = `
+                            <p class="font-semibold">${match.message}</p>
+                            <p class="text-sm text-gray-600">Context: "${match.context.text}"</p>
+                            <p class="text-sm">Suggestion: ${match.replacements[0]?.value || 'No suggestion available'}</p>
+                        `;
+                        grammarSuggestions.appendChild(suggestion);
+                    });
+                } else {
+                    grammarSuggestions.innerHTML = '<p class="text-green-600">No grammatical errors found!</p>';
+                }
+                grammarResult.classList.remove('hidden');
+                hideError();
+            })
+            .catch((error) => {
+                showError('An error occurred while checking grammar. Please try again.');
+                console.error('Error:', error);
+            });
+        });
+
+        document.getElementById('analyze-essay').addEventListener('click', function(e) {
+            e.preventDefault();
+            const essay = essayInput.value;
+
+            try {
+                const wordCount = essay.match(/\b\w+\b/g).length;
+                const sentenceCount = essay.split(/[.!?]+/).length;
+                const readabilityScore = calculateReadabilityScore(essay);
+                const uniqueWords = new Set(essay.match(/\b\w+\b/g)).size;
+
+                let readabilityCategory;
+                if (readabilityScore > 90) readabilityCategory = "Very Easy";
+                else if (readabilityScore > 80) readabilityCategory = "Easy";
+                else if (readabilityScore > 70) readabilityCategory = "Fairly Easy";
+                else if (readabilityScore > 60) readabilityCategory = "Standard";
+                else if (readabilityScore > 50) readabilityCategory = "Fairly Difficult";
+                else if (readabilityScore > 30) readabilityCategory = "Difficult";
+                else readabilityCategory = "Very Confusing";
+
+                analysisContent.innerHTML = `
+                    <p><strong>Word Count:</strong> ${wordCount}</p>
+                    <p><strong>Sentence Count:</strong> ${sentenceCount}</p>
+                    <p><strong>Unique Words:</strong> ${uniqueWords}</p>
+                    <p><strong>Readability Score:</strong> ${readabilityScore.toFixed(2)} (${readabilityCategory})</p>
+                `;
+                analysisResult.classList.remove('hidden');
+                hideError();
+            } catch (error) {
+                showError('An error occurred while analyzing the essay. Please try again.');
+                console.error('Error:', error);
+            }
+        });
+
+        document.getElementById('generate-summary').addEventListener('click', function(e) {
+            e.preventDefault();
+            const essay = essayInput.value;
+
+            try {
+                const sentences = essay.split(/[.!?]+/);
+                const wordFrequency = _.countBy(essay.match(/\b\w+\b/g), _.toLower);
+                const sortedWords = Object.entries(wordFrequency).sort((a, b) => b[1] - a[1]);
+                const topWords = sortedWords.slice(0, 5).map(entry => entry[0]);
+
+                const relevantSentences = sentences.filter(sentence => 
+                    topWords.some(word => sentence.toLowerCase().includes(word))
+                );
+
+                const summary = relevantSentences.slice(0, 3).join('. ') + '.';
+
+                essaySummary.innerHTML = `
+                    <p><strong>Key Words:</strong> ${topWords.join(', ')}</p>
+                    <p><strong>Summary:</strong> ${summary}</p>
+                `;
+                summaryResult.classList.remove('hidden');
+                hideError();
+            } catch (error) {
+                showError('An error occurred while generating the summary. Please try again.');
+                console.error('Error:', error);
+            }
         });
     </script>
 </body>
